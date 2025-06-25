@@ -1,0 +1,71 @@
+const axios = require('axios');
+exports.Webhook = async (req, res) => {
+ const tag = req.body.fulfillmentInfo.tag;
+ const sessionParams = req.body.sessionInfo.parameters;
+ if (tag === 'get-weather') {
+   const city = sessionParams['geo-city']; // Take dynamic city from user input
+   if (!city) {
+     return res.json({
+       fulfillment_response: {
+         messages: [
+           {
+             text: {
+               text: ["⚠️ Please provide a city name to get the weather."]
+             }
+           }
+         ]
+       }
+     });
+   }
+   try {
+     const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
+     const response = await axios.get(url);
+     const weather = response.data.current_condition[0];
+     const message = `🌤️ Weather in ${city}:\n` +
+                     `🌡️ Temperature: ${weather.temp_C}°C\n` +
+                     `☁️ Condition: ${weather.weatherDesc[0].value}\n` +
+                     `💧 Humidity: ${weather.humidity}%\n` +
+                     `💨 Wind: ${weather.windspeedKmph} km/h`;
+     res.json({
+       fulfillment_response: {
+         messages: [
+           {
+             text: {
+               text: [message]
+             }
+           }
+         ],
+       },
+       sessionInfo: {
+         parameters: {
+           'weather-result': message // Optional: set result as a session param
+         }
+       }
+     });
+   } catch (error) {
+     res.json({
+       fulfillment_response: {
+         messages: [
+           {
+             text: {
+               text: ["❌ Could not fetch weather at the moment. Try again later."]
+             }
+           }
+         ]
+       }
+     });
+   }
+ } else {
+   res.json({
+     fulfillment_response: {
+       messages: [
+         {
+           text: {
+             text: ["⚠️ Unrecognized tag."]
+           }
+         }
+       ]
+     }
+   });
+ }
+};
